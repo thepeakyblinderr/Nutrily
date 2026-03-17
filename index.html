@@ -540,17 +540,8 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 
 <div class="page" id="p-mood">
   <div class="ph" style="padding-bottom:12px"><div><div class="gr">Check in with yourself</div><div class="ti">Wellbeing</div></div></div>
-  <!-- mood tap -->
+  <!-- structured wellbeing score (only card needed) -->
   <div class="card">
-    <div style="font-size:13px;font-weight:500;margin-bottom:4px">How are you feeling today?</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:0">Tap to log your mood</div>
-    <div class="mood-row" id="moodRow"></div>
-    <textarea class="mood-note" id="moodNote" placeholder="Optional note — what's on your mind? (e.g. felt tired, had a good workout…)" rows="3"></textarea>
-    <button class="ab" onclick="svMood()" style="margin-top:12px">Save Mood</button>
-  </div>
-  <!-- structured wellbeing score -->
-  <div class="card" style="margin-top:0">
-    <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;margin-bottom:14px">Daily Wellbeing Check-in</div>
     <div class="wb-score-wrap">
       <div class="wb-ring">
         <svg width="88" height="88" viewBox="0 0 88 88">
@@ -564,13 +555,14 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
       </div>
       <div style="flex:1">
         <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600" id="wbScoreLbl">Rate each area</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5">Rate 1–5 across four dimensions. Saved daily.</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5">Rate 1–5 across four dimensions.</div>
       </div>
     </div>
     <div id="wbqList"></div>
-    <button class="ab" onclick="svWb()" style="margin-top:14px">Save Check-in</button>
+    <textarea class="mood-note" id="moodNote" placeholder="Optional note — how are you feeling? (e.g. felt tired, had a great workout…)" rows="2"></textarea>
+    <button class="ab" onclick="svWb()" style="margin-top:12px">Save Check-in</button>
   </div>
-  <!-- 7-day mood history -->
+  <!-- 7-day wellbeing history -->
   <div class="card" style="margin-top:0">
     <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:600;margin-bottom:12px">This Week</div>
     <div id="moodWeek"></div>
@@ -1009,10 +1001,11 @@ async function rH(){
   if(td_slp){document.getElementById('hSlp').textContent=td_slp.hrs;const ql=['😴 Poor','😐 OK','😊 Good'];document.getElementById('hSlpL').textContent=(ql[td_slp.qual]||'')+ ' · hrs sleep';}
   else{document.getElementById('hSlp').textContent='—';document.getElementById('hSlpL').textContent='tap to log sleep';}
   const td_md=moodData[TODAY];
-  const MOOD_EMOJIS=['😞','😕','😐','🙂','😊'];
-  const MOOD_LABELS=['Rough','Low','Okay','Good','Great'];
-  if(td_md&&td_md.mood!==undefined){document.getElementById('hMoodIcon').textContent=MOOD_EMOJIS[td_md.mood];document.getElementById('hMoodLbl').textContent=MOOD_LABELS[td_md.mood];}
-  else{document.getElementById('hMoodIcon').textContent='😐';document.getElementById('hMoodLbl').textContent='Tap to log';}
+  if(td_md&&td_md.wb&&td_md.wb.mood){
+    const mIdx=td_md.wb.mood-1; // 1-5 → 0-4
+    document.getElementById('hMoodIcon').textContent=MOOD_EMOJIS[mIdx];
+    document.getElementById('hMoodLbl').textContent=td_md.wbScore?td_md.wbScore+'/100':MOOD_LABELS[mIdx];
+  }else{document.getElementById('hMoodIcon').textContent='😐';document.getElementById('hMoodLbl').textContent='Tap to log';}
   await rHomeInsights(k,p,f);
 }
 async function dL(id){await lDl(id);await rH();toast('Removed');}
@@ -1080,7 +1073,7 @@ async function rHomeInsights(kcalToday,protToday,fatToday){
   }
 
   // mood nudge
-  if(!moodData[TODAY]){
+  if(!moodData[TODAY]||!moodData[TODAY].wb){
     chips.push({icon:'😊',bg:'#f5f0ff',label:'How are you feeling today?',sub:'Tap to log mood & wellbeing check-in',badge:'Log mood',cls:'badge-info',page:'mood',pi:-1});
   }
 
@@ -1558,22 +1551,14 @@ function renderSlpPage(){
 
 /* MOOD */
 function renderMoodPage(){
-  // build emoji row
-  const row=document.getElementById('moodRow');row.innerHTML='';
-  MOOD_EMOJIS.forEach((em,i)=>{
-    const btn=document.createElement('button');btn.className='mood-btn'+(i===curMoodSel?' sel':'');
-    btn.innerHTML=`<span class="me">${em}</span><span class="ml">${MOOD_LABELS[i]}</span>`;
-    btn.onclick=()=>{curMoodSel=i;document.querySelectorAll('.mood-btn').forEach((b,j)=>b.classList.toggle('sel',j===i));};
-    row.appendChild(btn);
-  });
-  // restore today if logged
   const td=moodData[TODAY];
   if(td){
-    if(td.mood!==undefined){curMoodSel=td.mood;document.querySelectorAll('.mood-btn').forEach((b,j)=>b.classList.toggle('sel',j===td.mood));}
-    if(td.note)document.getElementById('moodNote').value=td.note;
     if(td.wb)renderWbQuestions(td.wb);
+    else renderWbQuestions({energy:0,stress:0,focus:0,mood:0});
+    document.getElementById('moodNote').value=td.note||'';
   } else {
     renderWbQuestions({energy:0,stress:0,focus:0,mood:0});
+    document.getElementById('moodNote').value='';
   }
   renderMoodWeek();
 }
@@ -1590,48 +1575,33 @@ function renderWbQuestions(scores){
 }
 function setWb(k,v,btn){
   curWbScores[k]=v;
-  // update dots in this row
   btn.closest('.wbq-scale').querySelectorAll('.wbq-dot').forEach((d,i)=>d.classList.toggle('on',i+1===v));
   updateWbRing();
 }
 function updateWbRing(){
   const vals=Object.values(curWbScores).filter(v=>v>0);
   if(!vals.length){document.getElementById('wbScore').textContent='—';document.getElementById('wbRingFg').style.strokeDashoffset=226.2;document.getElementById('wbScoreLbl').textContent='Rate each area';return;}
-  // stress is inverted (1=best for stress)
-  const score=Math.round((
+  const score=Math.round(
     (curWbScores.energy||0)/5*25+
     ((6-(curWbScores.stress||0))/5)*25+
     (curWbScores.focus||0)/5*25+
     (curWbScores.mood||0)/5*25
-  ));
+  );
   document.getElementById('wbScore').textContent=score;
   document.getElementById('wbRingFg').style.strokeDashoffset=226.2-score/100*226.2;
-  const lbl=score>=80?'Thriving 🌟':score>=60?'Doing well 😊':score>=40?'Getting by 😐':'Needs care 💙';
-  document.getElementById('wbScoreLbl').textContent=lbl;
-}
-async function svMood(){
-  const note=document.getElementById('moodNote').value.trim();
-  if(!moodData)moodData={};
-  const allRated=WB_QUESTIONS.every(q=>curWbScores[q.k]>0);
-  const wb=allRated?{...curWbScores}:null;
-  // compute wellbeing score
-  let wbScore=null;
-  if(wb)wbScore=Math.round((wb.energy/5*25)+((6-wb.stress)/5)*25+(wb.focus/5*25)+(wb.mood/5*25));
-  moodData[TODAY]={mood:curMoodSel,note,wb,wbScore};
-  await kP('moodData',moodData);
-  renderMoodPage();await rH();
-  toast('Mood saved! '+MOOD_EMOJIS[curMoodSel]);
+  document.getElementById('wbScoreLbl').textContent=score>=80?'Thriving 🌟':score>=60?'Doing well 😊':score>=40?'Getting by 😐':'Needs care 💙';
 }
 async function svWb(){
   const allRated=WB_QUESTIONS.every(q=>curWbScores[q.k]>0);
-  if(!allRated){toast('Please rate all 4 areas first');return;}
-  if(!moodData[TODAY])moodData[TODAY]={mood:curMoodSel,note:'',wb:null,wbScore:null};
+  if(!allRated){toast('Please rate all 4 areas');return;}
   const wb={...curWbScores};
   const wbScore=Math.round((wb.energy/5*25)+((6-wb.stress)/5)*25+(wb.focus/5*25)+(wb.mood/5*25));
-  moodData[TODAY].wb=wb;moodData[TODAY].wbScore=wbScore;
+  const note=document.getElementById('moodNote').value.trim();
+  if(!moodData)moodData={};
+  moodData[TODAY]={wb,wbScore,note};
   await kP('moodData',moodData);
   renderMoodPage();await rH();
-  toast('Check-in saved! Score: '+wbScore+'/100');
+  toast('Saved! Wellbeing: '+wbScore+'/100');
 }
 function renderMoodWeek(){
   const mw=document.getElementById('moodWeek');mw.innerHTML='';
@@ -1642,8 +1612,9 @@ function renderMoodWeek(){
     const md=moodData[dk];
     const isToday=dk===TODAY;
     const cell=document.createElement('div');cell.style.cssText='text-align:center;flex:1';
+    const mIdx=md&&md.wb&&md.wb.mood?md.wb.mood-1:null;
     cell.innerHTML=`<div style="font-size:11px;color:var(--muted);margin-bottom:4px">${d.toLocaleDateString('en',{weekday:'short'})}</div>
-      <div style="font-size:${isToday?'26':'22'}px;transition:.2s">${md&&md.mood!==undefined?MOOD_EMOJIS[md.mood]:'·'}</div>
+      <div style="font-size:${isToday?'26':'22'}px;transition:.2s">${mIdx!==null?MOOD_EMOJIS[mIdx]:'·'}</div>
       <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${md&&md.wbScore?md.wbScore:'—'}</div>`;
     row.appendChild(cell);
   }
@@ -1665,8 +1636,8 @@ function rWellbeingProgress(){
   const slpDays=dBack(7).map(d=>sleepData[d]).filter(Boolean);
   const moodDays=dBack(7).map(d=>moodData[d]).filter(Boolean);
   document.getElementById('pgAvgSlp').textContent=slpDays.length?r1(slpDays.reduce((s,d)=>s+d.hrs,0)/slpDays.length)+'h':'—';
-  const moodVals=moodDays.filter(d=>d.mood!==undefined);
-  document.getElementById('pgAvgMood').textContent=moodVals.length?MOOD_EMOJIS[Math.round(moodVals.reduce((s,d)=>s+d.mood,0)/moodVals.length)]:'—';
+  const moodVals=moodDays.filter(d=>d.wb&&d.wb.mood);
+  document.getElementById('pgAvgMood').textContent=moodVals.length?MOOD_EMOJIS[Math.min(4,Math.round(moodVals.reduce((s,d)=>s+(d.wb.mood-1),0)/moodVals.length))]:'—';
   const wbVals=moodDays.filter(d=>d.wbScore);
   document.getElementById('pgAvgWb').textContent=wbVals.length?Math.round(wbVals.reduce((s,d)=>s+d.wbScore,0)/wbVals.length)+'/100':'—';
   // sleep bars
@@ -1688,26 +1659,26 @@ function rCrossInsights(slpDays,moodVals,wbVals){
   const insights=[];
   const dates7=dBack(7);
   // sleep vs mood correlation
-  const paired=dates7.map(d=>({slp:sleepData[d],md:moodData[d]})).filter(x=>x.slp&&x.md&&x.md.mood!==undefined);
+  const paired=dates7.map(d=>({slp:sleepData[d],md:moodData[d]})).filter(x=>x.slp&&x.md&&x.md.wb);
   if(paired.length>=4){
     const goodSlp=paired.filter(x=>x.slp.hrs>=7);
     const badSlp=paired.filter(x=>x.slp.hrs<7);
     if(goodSlp.length&&badSlp.length){
-      const goodMood=goodSlp.reduce((s,x)=>s+x.md.mood,0)/goodSlp.length;
-      const badMood=badSlp.reduce((s,x)=>s+x.md.mood,0)/badSlp.length;
+      const goodMood=goodSlp.reduce((s,x)=>s+(x.md.wb?x.md.wb.mood-1:2),0)/goodSlp.length;
+      const badMood=badSlp.reduce((s,x)=>s+(x.md.wb?x.md.wb.mood-1:2),0)/badSlp.length;
       const diff=r1(goodMood-badMood);
       if(diff>0.3)insights.push({icon:'😴',bg:'#eef6f0',label:'Sleep boosts your mood',sub:`On nights with 7+ hours, your mood averages ${MOOD_EMOJIS[Math.round(goodMood)]} vs ${MOOD_EMOJIS[Math.round(badMood)]} on short nights.`,badge:'Correlated',cls:'badge-good'});
       else if(diff<-0.3)insights.push({icon:'💤',bg:'#fdf4e7',label:'Mood unaffected by sleep length',sub:'Your mood this week was consistent regardless of sleep hours.',badge:'Stable',cls:'badge-info'});
     }
   }
   // exercise vs mood
-  const exMoodPairs=dates7.map(d=>({ex:exWeek[d],md:moodData[d]})).filter(x=>x.md&&x.md.mood!==undefined);
+  const exMoodPairs=dates7.map(d=>({ex:exWeek[d],md:moodData[d]})).filter(x=>x.md&&x.md.wb);
   if(exMoodPairs.length>=4){
     const withEx=exMoodPairs.filter(x=>x.ex&&x.ex.status==='done');
     const withoutEx=exMoodPairs.filter(x=>!x.ex||x.ex.status!=='done');
     if(withEx.length>=2&&withoutEx.length>=2){
-      const exMood=withEx.reduce((s,x)=>s+x.md.mood,0)/withEx.length;
-      const noExMood=withoutEx.reduce((s,x)=>s+x.md.mood,0)/withoutEx.length;
+      const exMood=withEx.reduce((s,x)=>s+x.md.wb?(x.md.wb.mood-1):2,0)/withEx.length;
+      const noExMood=withoutEx.reduce((s,x)=>s+x.md.wb?(x.md.wb.mood-1):2,0)/withoutEx.length;
       const diff=r1(exMood-noExMood);
       if(diff>0.4)insights.push({icon:'🏋️',bg:'#eef6f0',label:'Exercise lifts your mood',sub:`On days you worked out, your mood was ${MOOD_EMOJIS[Math.round(exMood)]}. On rest days: ${MOOD_EMOJIS[Math.round(noExMood)]}. Keep moving!`,badge:'+'+diff+' mood',cls:'badge-good'});
     }
