@@ -254,6 +254,19 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .day-btn.day-done{border-color:var(--green)!important;background:#f0f5f0!important}
 .day-btn.day-done .day-dot{background:var(--green)!important}
 .day-btn.day-skipped .day-dot{background:var(--faint)!important}
+/* food suggestion rows */
+.fsug-row{padding:12px 0;border-bottom:1px solid var(--bdr)}
+.fsug-row:last-child{border-bottom:none}
+.fsug-micro{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.fsug-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.fsug-label{font-size:12.5px;font-weight:500}
+.fsug-pct{font-size:11px;color:var(--muted);margin-left:auto}
+.fsug-chips{display:flex;gap:6px;flex-wrap:wrap}
+.fsug-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:20px;cursor:pointer;transition:all .15s}
+.fsug-chip:hover{border-color:var(--amber);background:#fdf6ee}
+.fsug-chip-icon{font-size:14px}
+.fsug-chip-name{font-size:12px;font-weight:500;color:var(--text)}
+.fsug-chip-val{font-size:10.5px;color:var(--muted)}
 .toast{position:fixed;bottom:calc(var(--nh) + var(--sb) + 12px);left:50%;transform:translateX(-50%) translateY(6px);background:var(--text);color:#fff;padding:9px 18px;border-radius:20px;font-size:12.5px;z-index:500;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .22s}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
@@ -531,6 +544,14 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:600;margin-bottom:14px">Micronutrients Today</div>
     <div id="miL"></div>
   </div>
+
+  <!-- food suggestions based on deficiencies -->
+
+  <div class="ins-card" id="foodSugCard" style="display:none">
+    <div class="ins-title">🥗 Eat More Of These</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Based on your micronutrient gaps today</div>
+    <div id="foodSugList"></div>
+  </div>
 </div>
 
 <!-- NAV 6 tabs -->
@@ -573,10 +594,32 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
       <button class="shc" onclick="document.getElementById('ov').classList.remove('open');selF=null">✕</button>
     </div>
     <div class="shb">
-      <div class="ql">Quantity</div>
+      <div class="ql">Quantity & Unit</div>
       <div class="qr">
-        <input class="qi" id="qty" type="number" value="100" min="1" oninput="uP()">
-        <select class="us" id="unt" onchange="uP()"><option value="g">grams (g)</option><option value="ml">ml</option></select>
+        <input class="qi" id="qty" type="number" value="100" min="0.1" step="0.5" oninput="uP()">
+        <select class="us" id="unt" onchange="uChg()">
+          <optgroup label="Weight">
+            <option value="g">grams (g)</option>
+            <option value="kg">kilograms (kg)</option>
+            <option value="oz">ounces (oz)</option>
+          </optgroup>
+          <optgroup label="Volume">
+            <option value="ml">ml</option>
+            <option value="l">litres (L)</option>
+            <option value="cup">cup (~240ml)</option>
+            <option value="tbsp">tablespoon (tbsp)</option>
+            <option value="tsp">teaspoon (tsp)</option>
+          </optgroup>
+          <optgroup label="Serving">
+            <option value="srv">serving</option>
+            <option value="scoop">scoop (~30g)</option>
+            <option value="piece">piece / count</option>
+            <option value="slice">slice</option>
+            <option value="bowl">bowl (~200g)</option>
+            <option value="plate">plate (~350g)</option>
+            <option value="handful">handful (~30g)</option>
+          </optgroup>
+        </select>
       </div>
       <div class="chs" id="chips"></div>
       <div class="np" id="npv"></div>
@@ -656,7 +699,7 @@ const MICROS=[
   {k:'sf',label:'Sat. Fat',u:'g',dv:20,c:'#b85c44'},
 ];
 
-const SZ={banana:[{l:'Small',g:81},{l:'Medium',g:118},{l:'Large',g:152}],apple:[{l:'Small',g:149},{l:'Medium',g:182},{l:'Large',g:223}],mango:[{l:'Small',g:200},{l:'Medium',g:300},{l:'Large',g:400}],orange:[{l:'Small',g:96},{l:'Medium',g:131},{l:'Large',g:184}],egg:[{l:'Small',g:38},{l:'Medium',g:44},{l:'Large',g:50},{l:'XL',g:56}],bread:[{l:'1 slice',g:28},{l:'2 slices',g:56}],rice:[{l:'Small bowl',g:100},{l:'Medium bowl',g:150},{l:'Large bowl',g:200}],milk:[{l:'½ cup',g:120},{l:'1 cup',g:240},{l:'1 glass',g:300}],tea:[{l:'1 cup',g:240},{l:'2 cups',g:480}],chai:[{l:'1 cup',g:200},{l:'2 cups',g:400}],coffee:[{l:'1 cup',g:240},{l:'2 cups',g:480}],chicken:[{l:'Small',g:85},{l:'Medium',g:140},{l:'Large',g:200}],potato:[{l:'Small',g:130},{l:'Medium',g:173},{l:'Large',g:299}],oat:[{l:'½ cup',g:40},{l:'1 cup',g:80}],protein:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],whey:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],shake:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],dal:[{l:'Small bowl',g:100},{l:'Medium bowl',g:150},{l:'Large bowl',g:200}],roti:[{l:'1 roti',g:40},{l:'2 rotis',g:80},{l:'3 rotis',g:120}],chapati:[{l:'1 roti',g:40},{l:'2 rotis',g:80},{l:'3 rotis',g:120}],paratha:[{l:'1 paratha',g:80},{l:'2 parathas',g:160}],paneer:[{l:'50g',g:50},{l:'100g',g:100},{l:'150g',g:150}],almond:[{l:'Small handful',g:15},{l:'Handful',g:28},{l:'Large handful',g:40}],biryani:[{l:'Small plate',g:250},{l:'Medium plate',g:350},{l:'Large plate',g:450}],samosa:[{l:'1 piece',g:65},{l:'2 pieces',g:130}],idli:[{l:'1 piece',g:40},{l:'2 pieces',g:80},{l:'4 pieces',g:160}],dosa:[{l:'1 dosa',g:100},{l:'2 dosas',g:200}],upma:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}],poha:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}],khichdi:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}]};
+const SZ={banana:[{l:'Small',g:81},{l:'Medium',g:118},{l:'Large',g:152}],apple:[{l:'Small',g:149},{l:'Medium',g:182},{l:'Large',g:223}],mango:[{l:'Small',g:200},{l:'Medium',g:300},{l:'Large',g:400}],orange:[{l:'Small',g:96},{l:'Medium',g:131},{l:'Large',g:184}],egg:[{l:'Small',g:38},{l:'Medium',g:44},{l:'Large',g:50},{l:'XL',g:56}],bread:[{l:'1 slice',g:28},{l:'2 slices',g:56}],rice:[{l:'Small bowl',g:100},{l:'Medium bowl',g:150},{l:'Large bowl',g:200}],milk:[{l:'½ cup',g:120},{l:'1 cup',g:240},{l:'1 glass',g:300}],tea:[{l:'1 cup',g:240},{l:'2 cups',g:480}],chai:[{l:'1 cup',g:200},{l:'2 cups',g:400}],coffee:[{l:'1 cup',g:240},{l:'2 cups',g:480}],chicken:[{l:'Small',g:85},{l:'Medium',g:140},{l:'Large',g:200}],potato:[{l:'Small',g:130},{l:'Medium',g:173},{l:'Large',g:299}],oat:[{l:'½ cup',g:40},{l:'1 cup',g:80}],protein:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],whey:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],shake:[{l:'1 scoop',g:30},{l:'1.5 scoops',g:45},{l:'2 scoops',g:60}],dal:[{l:'Small bowl',g:100},{l:'Medium bowl',g:150},{l:'Large bowl',g:200}],roti:[{l:'1 roti',g:40},{l:'2 rotis',g:80},{l:'3 rotis',g:120}],chapati:[{l:'1 roti',g:40},{l:'2 rotis',g:80},{l:'3 rotis',g:120}],paratha:[{l:'1 paratha',g:80},{l:'2 parathas',g:160}],paneer:[{l:'50g',g:50},{l:'100g',g:100},{l:'150g',g:150}],almond:[{l:'Small handful',g:15},{l:'Handful',g:28},{l:'Large handful',g:40}],tofu:[{l:'Small piece (50g)',g:50},{l:'Medium piece (100g)',g:100},{l:'Large piece (150g)',g:150}],edamame:[{l:'Small bowl',g:100},{l:'Medium bowl',g:150},{l:'Large bowl',g:200}],soya:[{l:'Small bowl (dry)',g:30},{l:'Medium bowl (dry)',g:50},{l:'Large bowl (dry)',g:80}],tempeh:[{l:'50g',g:50},{l:'100g',g:100},{l:'150g',g:150}],samosa:[{l:'1 piece',g:65},{l:'2 pieces',g:130}],idli:[{l:'1 piece',g:40},{l:'2 pieces',g:80},{l:'4 pieces',g:160}],dosa:[{l:'1 dosa',g:100},{l:'2 dosas',g:200}],upma:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}],poha:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}],khichdi:[{l:'Small bowl',g:150},{l:'Large bowl',g:250}]};
 
 /* p=protein c=carbs f=fat fib=fiber sug=sugar ca=calcium fe=iron pot=potassium na=sodium vc=vitC vd=vitD b12=vitB12 mg=magnesium sf=satFat (all per 100g) */
 const FOODS=[
@@ -735,6 +778,17 @@ const FOODS=[
   {n:'Potato (boiled)',kcal:77,p:2,c:17,f:.1,fib:2.1,sug:.8,ca:12,fe:.3,pot:328,na:6,vc:19.7,vd:0,b12:0,mg:22,sf:0},
   {n:'Tomato',kcal:18,p:.9,c:3.9,f:.2,fib:1.2,sug:2.6,ca:10,fe:.3,pot:237,na:5,vc:14,vd:0,b12:0,mg:11,sf:0},
   {n:'Avocado',kcal:160,p:2,c:8.5,f:14.7,fib:6.7,sug:.7,ca:12,fe:.6,pot:485,na:7,vc:10,vd:0,b12:0,mg:29,sf:2.1},
+  /* tofu & soy */
+  {n:'Tofu (firm)',kcal:76,p:8,c:1.9,f:4.8,fib:.3,sug:.7,ca:350,fe:5.4,pot:121,na:7,vc:.1,vd:0,b12:0,mg:30,sf:.7},
+  {n:'Tofu (silken / soft)',kcal:55,p:5,c:2.5,f:2.8,fib:0,sug:1,ca:120,fe:.8,pot:100,na:12,vc:.1,vd:0,b12:0,mg:22,sf:.4},
+  {n:'Tofu (scrambled / bhurji style)',kcal:90,p:8.5,c:4,f:5,fib:.5,sug:1,ca:200,fe:2,pot:130,na:180,vc:3,vd:0,b12:0,mg:28,sf:.7},
+  {n:'Paneer vs Tofu (tofu)',kcal:76,p:8,c:1.9,f:4.8,fib:.3,sug:.7,ca:350,fe:5.4,pot:121,na:7,vc:.1,vd:0,b12:0,mg:30,sf:.7},
+  {n:'Soy Milk (unsweetened)',kcal:33,p:3.3,c:1.6,f:1.8,fib:.4,sug:.5,ca:123,fe:.4,pot:118,na:51,vc:0,vd:1,b12:.6,mg:18,sf:.2},
+  {n:'Edamame (boiled)',kcal:121,p:11.9,c:8.9,f:5.2,fib:5.2,sug:2.2,ca:63,fe:2.3,pot:436,na:6,vc:6.1,vd:0,b12:0,mg:64,sf:.7},
+  {n:'Tempeh',kcal:193,p:19,c:9.4,f:11,fib:0,sug:0,ca:111,fe:2.7,pot:412,na:9,vc:0,vd:0,b12:0,mg:81,sf:2.2},
+  {n:'Soya Chunks (dry)',kcal:345,p:52,c:33,f:0.5,fib:13,sug:0,ca:180,fe:10,pot:0,na:10,vc:0,vd:0,b12:0,mg:0,sf:.1},
+  {n:'Soya Chunks (cooked)',kcal:112,p:17,c:10,f:.2,fib:4,sug:0,ca:60,fe:3.5,pot:180,na:4,vc:0,vd:0,b12:0,mg:40,sf:.05},
+  {n:'Soya Milk (sweetened)',kcal:54,p:3.3,c:6.3,f:1.8,fib:.4,sug:5,ca:123,fe:.4,pot:118,na:51,vc:0,vd:1,b12:.6,mg:18,sf:.2},
 ];
 
 /* INIT */
@@ -901,32 +955,128 @@ function mBR(f){
 }
 
 /* SHEET */
+// unit → grams conversion (base: per 100g nutrition values)
+// returns grams equivalent for (qty, unit, food)
+function toGrams(qty, unit, food){
+  const n=food?food.n:null;
+  switch(unit){
+    case 'g':      return qty;
+    case 'kg':     return qty*1000;
+    case 'oz':     return qty*28.35;
+    case 'ml':     return qty;          // assume density ≈1 for liquids
+    case 'l':      return qty*1000;
+    case 'cup':    return qty*240;      // 1 cup ≈ 240ml/g
+    case 'tbsp':   return qty*15;       // 1 tbsp ≈ 15g
+    case 'tsp':    return qty*5;        // 1 tsp ≈ 5g
+    case 'srv':    return food&&food.sq ? qty*food.sq : qty*100;
+    case 'scoop':  return qty*30;       // default scoop 30g
+    case 'piece':  return qty*100;      // default piece 100g (overridden by chip)
+    case 'slice':  return qty*28;       // default slice ~28g
+    case 'bowl':   return qty*200;
+    case 'plate':  return qty*350;
+    case 'handful':return qty*30;
+    default:       return qty;
+  }
+}
+
+// smart default qty when switching unit
+function defaultQty(unit){
+  switch(unit){
+    case 'g':      return 100;
+    case 'kg':     return 0.1;
+    case 'oz':     return 3.5;
+    case 'ml':     return 100;
+    case 'l':      return 0.25;
+    case 'cup':    return 1;
+    case 'tbsp':   return 2;
+    case 'tsp':    return 1;
+    case 'srv':    return 1;
+    case 'scoop':  return 1;
+    case 'piece':  return 1;
+    case 'slice':  return 1;
+    case 'bowl':   return 1;
+    case 'plate':  return 1;
+    case 'handful':return 1;
+    default:       return 1;
+  }
+}
+
+function uChg(){
+  const u=document.getElementById('unt').value;
+  // set sensible default qty for the chosen unit
+  document.getElementById('qty').value=defaultQty(u);
+  uP();
+}
+
 function oS(food){
   selF=food;
   document.getElementById('sfn').textContent=food.name;
   document.getElementById('sfb').textContent=food.brand||'';
-  document.getElementById('qty').value=food.sq||100;
-  document.getElementById('unt').value='g';
-  const ce=document.getElementById('chips');ce.innerHTML='';
-  if(food.sq&&food.sl)aC(ce,`1 serving (${food.sl})`,food.sq);
+  // smart default unit based on food type
   const lo=food.name.toLowerCase();
-  for(const[k,a] of Object.entries(SZ))if(lo.includes(k)){a.forEach(p=>aC(ce,p.l,p.g));break;}
+  let defUnit='g';
+  if(lo.includes('milk')||lo.includes('lassi')||lo.includes('juice')||lo.includes('water')||lo.includes('chai')||lo.includes('tea')||lo.includes('coffee')||lo.includes('shake')||lo.includes('soy milk'))defUnit='ml';
+  else if(lo.includes('scoop')||lo.includes('whey')||lo.includes('protein shake'))defUnit='scoop';
+  else if(lo.includes('egg')||lo.includes('idli')||lo.includes('samosa')||lo.includes('piece'))defUnit='piece';
+  else if(lo.includes('slice')||lo.includes('bread'))defUnit='slice';
+  else if(lo.includes('bowl')||lo.includes('dal')||lo.includes('khichdi')||lo.includes('upma')||lo.includes('poha'))defUnit='bowl';
+  document.getElementById('unt').value=defUnit;
+  document.getElementById('qty').value=defaultQty(defUnit);
+  // size chips
+  const ce=document.getElementById('chips');ce.innerHTML='';
+  if(food.sq&&food.sl)aC(ce,`1 serving (${food.sl})`,food.sq,'g');
+  for(const[k,a] of Object.entries(SZ))if(lo.includes(k)){a.forEach(p=>aC(ce,p.l,p.g,'g'));break;}
+  // always add a "per 100g" chip
+  aC(ce,'100g',100,'g');
   uP();
   document.getElementById('ov').classList.add('open');
 }
-function aC(c,l,g){const b=document.createElement('button');b.className='ch';b.textContent=l;b.onclick=()=>{document.getElementById('qty').value=g;document.getElementById('unt').value='g';c.querySelectorAll('.ch').forEach(x=>x.classList.remove('on'));b.classList.add('on');uP();};c.appendChild(b);}
+
+function aC(c,l,g,unit){
+  const b=document.createElement('button');b.className='ch';b.textContent=l;
+  b.onclick=()=>{
+    document.getElementById('qty').value=g;
+    document.getElementById('unt').value=unit||'g';
+    c.querySelectorAll('.ch').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');uP();
+  };
+  c.appendChild(b);
+}
+
 function cS(e){if(e&&e.target!==document.getElementById('ov'))return;document.getElementById('ov').classList.remove('open');selF=null;}
+
 function uP(){
   if(!selF)return;
-  const q=parseFloat(document.getElementById('qty').value)||100,fac=q/100,n=selF.n;
-  const rows=[['Calories',Math.round(n.kcal*fac)+' kcal'],['Protein',r1(n.protein*fac)+'g'],['Carbs',r1(n.carbs*fac)+'g'],['Fat',r1(n.fat*fac)+'g'],n.fib?['Fiber',r1(n.fib*fac)+'g']:null,n.sug?['Sugar',r1(n.sug*fac)+'g']:null].filter(Boolean);
-  document.getElementById('npv').innerHTML=`<div class="npt">Per ${q}g</div>${rows.map(([k,v])=>`<div class="npr"><span class="npk">${k}</span><span class="npv">${v}</span></div>`).join('')}`;
+  const qty=parseFloat(document.getElementById('qty').value)||0;
+  const unit=document.getElementById('unt').value;
+  const grams=toGrams(qty,unit,selF);
+  const fac=grams/100;
+  const n=selF.n;
+  const unitLabel=qty+' '+(unit==='g'?'g':unit==='ml'?'ml':unit==='cup'?'cup'+(qty!==1?'s':''):unit==='scoop'?'scoop'+(qty!==1?'s':''):unit==='piece'?'piece'+(qty!==1?'s':''):unit==='slice'?'slice'+(qty!==1?'s':''):unit==='srv'?'serving'+(qty!==1?'s':''):unit);
+  const rows=[
+    ['Calories',Math.round(n.kcal*fac)+' kcal'],
+    ['Protein',r1(n.protein*fac)+'g'],
+    ['Carbs',r1(n.carbs*fac)+'g'],
+    ['Fat',r1(n.fat*fac)+'g'],
+    n.fib?['Fiber',r1(n.fib*fac)+'g']:null,
+    n.sug?['Sugar',r1(n.sug*fac)+'g']:null,
+  ].filter(Boolean);
+  document.getElementById('npv').innerHTML=
+    `<div class="npt">Per ${unitLabel} (≈${Math.round(grams)}g)</div>`+
+    rows.map(([k,v])=>`<div class="npr"><span class="npk">${k}</span><span class="npv">${v}</span></div>`).join('');
 }
+
 async function cA(){
   if(!selF)return;
-  const q=parseFloat(document.getElementById('qty').value)||100,u=document.getElementById('unt').value,fac=q/100,n=selF.n;
+  const qty=parseFloat(document.getElementById('qty').value)||0;
+  const unit=document.getElementById('unt').value;
+  const grams=toGrams(qty,unit,selF);
+  const fac=grams/100;
+  const n=selF.n;
+  const displayQty=qty;
+  const displayUnit=unit==='srv'?'serving':unit;
   const micros={ca:n.ca*fac,fe:n.fe*fac,pot:n.pot*fac,na:n.na*fac,vc:n.vc*fac,vd:(n.vd||0)*fac,b12:(n.b12||0)*fac,fib:n.fib*fac,sug:n.sug*fac,mg:n.mg*fac,sf:n.sf*fac};
-  await lAd({date:TODAY,meal:curMeal,name:selF.name,qty:q,unit:u,kcal:n.kcal*fac,protein:n.protein*fac,carbs:n.carbs*fac,fat:n.fat*fac,micros,ts:Date.now()});
+  await lAd({date:TODAY,meal:curMeal,name:selF.name,qty:displayQty,unit:displayUnit,kcal:n.kcal*fac,protein:n.protein*fac,carbs:n.carbs*fac,fat:n.fat*fac,micros,ts:Date.now()});
   document.getElementById('ov').classList.remove('open');selF=null;
   await rH();toast('Added to '+curMeal);
 }
@@ -1399,6 +1549,179 @@ function dMac(bd){
 function rMi(m){
   const el=document.getElementById('miL');el.innerHTML='';
   MICROS.forEach(mi=>{const v=m[mi.k]||0,pct=Math.min(v/mi.dv*100,100);const row=document.createElement('div');row.className='mir';row.innerHTML=`<div class="mit"><span class="mim">${mi.label}</span><span class="miv">${v<1?v.toFixed(2):Math.round(v)} ${mi.u} <span style="font-size:10px">(${Math.round(pct)}% DV)</span></span></div><div class="mib"><div class="mif" style="width:${pct}%;background:${mi.c}"></div></div>`;el.appendChild(row);});
+  rFoodSuggestions(m);
+}
+
+/* food → nutrient lookup: top sources per micro key */
+const MICRO_FOODS={
+  ca:{label:'Calcium',color:'#c8b4e0',unit:'mg',dv:1300,sources:[
+    {icon:'🧀',name:'Paneer',q:'paneer',val:'480mg/100g'},
+    {icon:'🫘',name:'Tofu (firm)',q:'tofu',val:'350mg/100g'},
+    {icon:'🥛',name:'Whole Milk',q:'milk',val:'113mg/100g'},
+    {icon:'🍦',name:'Curd / Dahi',q:'curd',val:'120mg/100g'},
+    {icon:'🥗',name:'Spinach',q:'spinach',val:'99mg/100g'},
+    {icon:'🥦',name:'Broccoli',q:'broccoli',val:'47mg/100g'},
+    {icon:'🍦',name:'Greek Yogurt',q:'yogurt',val:'110mg/100g'},
+    {icon:'🫘',name:'Chana Dal',q:'chana dal',val:'42mg/100g'},
+    {icon:'🥛',name:'Lassi',q:'lassi',val:'120mg/100g'},
+    {icon:'🍛',name:'Palak Paneer',q:'palak paneer',val:'240mg/100g'},
+  ]},
+  fe:{label:'Iron',color:'#b87333',unit:'mg',dv:18,sources:[
+    {icon:'🫘',name:'Soya Chunks',q:'soya chunks',val:'10mg/100g'},
+    {icon:'🥜',name:'Cashews',q:'cashews',val:'6.7mg/100g'},
+    {icon:'🌾',name:'Oats',q:'oats',val:'4.7mg/100g'},
+    {icon:'🧀',name:'Tofu (firm)',q:'tofu',val:'5.4mg/100g'},
+    {icon:'🌿',name:'Spinach',q:'spinach',val:'2.7mg/100g'},
+    {icon:'🍛',name:'Dal (mixed)',q:'dal',val:'3.3mg/100g'},
+    {icon:'🍛',name:'Toor Dal',q:'toor dal',val:'1.0mg/100g'},
+    {icon:'🥜',name:'Almonds',q:'almonds',val:'3.7mg/100g'},
+    {icon:'🍞',name:'Whole Wheat Bread',q:'bread',val:'3.6mg/100g'},
+    {icon:'🌾',name:'Poha',q:'poha',val:'2.8mg/100g'},
+  ]},
+  pot:{label:'Potassium',color:'#6a8f6e',unit:'mg',dv:4700,sources:[
+    {icon:'🥬',name:'Spinach',q:'spinach',val:'558mg/100g'},
+    {icon:'🥜',name:'Almonds',q:'almonds',val:'733mg/100g'},
+    {icon:'🥑',name:'Avocado',q:'avocado',val:'485mg/100g'},
+    {icon:'🍠',name:'Sweet Potato',q:'sweet potato',val:'475mg/100g'},
+    {icon:'🍌',name:'Banana',q:'banana',val:'358mg/100g'},
+    {icon:'🍛',name:'Dal (mixed)',q:'dal',val:'369mg/100g'},
+    {icon:'🥜',name:'Peanuts',q:'peanuts',val:'634mg/100g'},
+    {icon:'🫘',name:'Rajma',q:'rajma',val:'403mg/100g'},
+    {icon:'🍈',name:'Guava',q:'guava',val:'417mg/100g'},
+    {icon:'🥔',name:'Potato',q:'potato',val:'328mg/100g'},
+  ]},
+  na:{label:'Sodium',color:'#b85c44',unit:'mg',dv:2300,sources:[
+    {icon:'💡',name:'Tip: Add salt',q:'',val:'Add a pinch of salt to home-cooked meals'},
+    {icon:'🍛',name:'Sambar',q:'sambar',val:'420mg/bowl'},
+    {icon:'🧀',name:'Butter',q:'butter',val:'643mg/100g'},
+    {icon:'🥜',name:'Peanut Butter',q:'peanut butter',val:'459mg/100g'},
+  ]},
+  vc:{label:'Vitamin C',color:'#4a7fa0',unit:'mg',dv:90,sources:[
+    {icon:'🍈',name:'Guava',q:'guava',val:'228mg/100g'},
+    {icon:'🥦',name:'Broccoli',q:'broccoli',val:'89mg/100g'},
+    {icon:'🍊',name:'Orange',q:'orange',val:'53mg/100g'},
+    {icon:'🍋',name:'Nimbu Pani',q:'nimbu pani',val:'19mg/glass'},
+    {icon:'🥝',name:'Papaya',q:'papaya',val:'61mg/100g'},
+    {icon:'🍅',name:'Tomato',q:'tomato',val:'14mg/100g'},
+    {icon:'🥬',name:'Spinach',q:'spinach',val:'28mg/100g'},
+    {icon:'🫑',name:'Aloo Gobi',q:'aloo gobi',val:'35mg/100g'},
+    {icon:'🍊',name:'Mango',q:'mango',val:'36mg/100g'},
+    {icon:'🍓',name:'Watermelon',q:'watermelon',val:'8mg/100g'},
+  ]},
+  vd:{label:'Vitamin D',color:'#c8a060',unit:'µg',dv:20,sources:[
+    {icon:'🐟',name:'Salmon',q:'salmon',val:'14.4µg/100g'},
+    {icon:'🐟',name:'Fish Curry',q:'fish curry',val:'4µg/100g'},
+    {icon:'🐟',name:'Tuna',q:'tuna',val:'3.8µg/100g'},
+    {icon:'🥚',name:'Whole Egg',q:'egg',val:'2µg/100g'},
+    {icon:'🍳',name:'Egg Bhurji',q:'egg bhurji',val:'2.2µg/100g'},
+    {icon:'🥛',name:'Soy Milk',q:'soy milk',val:'1µg/100g'},
+    {icon:'🧈',name:'Butter',q:'butter',val:'1.5µg/100g'},
+    {icon:'🥛',name:'Whole Milk',q:'milk',val:'0.1µg/100g'},
+    {icon:'☀️',name:'Sunlight',q:'',val:'15 min morning sun daily'},
+  ]},
+  b12:{label:'Vitamin B12',color:'#7c5cbf',unit:'µg',dv:2.4,sources:[
+    {icon:'🐟',name:'Salmon',q:'salmon',val:'3.2µg/100g'},
+    {icon:'🐟',name:'Tuna',q:'tuna',val:'2.5µg/100g'},
+    {icon:'🥩',name:'Mutton Curry',q:'mutton',val:'2.4µg/100g'},
+    {icon:'🐟',name:'Fish Curry',q:'fish curry',val:'3µg/100g'},
+    {icon:'🍳',name:'Egg Bhurji',q:'egg bhurji',val:'1.2µg/100g'},
+    {icon:'🥚',name:'Whole Egg',q:'egg',val:'1.1µg/100g'},
+    {icon:'🥛',name:'Lassi',q:'lassi',val:'0.6µg/100g'},
+    {icon:'🥛',name:'Soy Milk',q:'soy milk',val:'0.6µg/100g'},
+    {icon:'🥛',name:'Whole Milk',q:'milk',val:'0.4µg/100g'},
+    {icon:'🍦',name:'Curd / Dahi',q:'curd',val:'0.4µg/100g'},
+  ]},
+  fib:{label:'Fiber',color:'#7aaa74',unit:'g',dv:28,sources:[
+    {icon:'🥜',name:'Almonds',q:'almonds',val:'12.5g/100g'},
+    {icon:'🌾',name:'Oats',q:'oats',val:'10.6g/100g'},
+    {icon:'🍛',name:'Dal (mixed)',q:'dal',val:'7.9g/100g'},
+    {icon:'🥑',name:'Avocado',q:'avocado',val:'6.7g/100g'},
+    {icon:'🫘',name:'Rajma',q:'rajma',val:'6.4g/100g'},
+    {icon:'🍈',name:'Guava',q:'guava',val:'5.4g/100g'},
+    {icon:'🍠',name:'Sweet Potato',q:'sweet potato',val:'3.3g/100g'},
+    {icon:'🍌',name:'Banana',q:'banana',val:'2.6g/100g'},
+    {icon:'🥦',name:'Broccoli',q:'broccoli',val:'2.6g/100g'},
+    {icon:'🫘',name:'Soya Chunks',q:'soya chunks',val:'4g/100g'},
+  ]},
+  sug:{label:'Sugar',color:'#c8a060',unit:'g',dv:50,sources:[
+    {icon:'💡',name:'High sugar today',q:'',val:'Cut back on sweets, juices & packaged foods'},
+    {icon:'🍌',name:'Natural sugars OK',q:'',val:'Fruit sugars are fine — avoid added sugars'},
+  ]},
+  mg:{label:'Magnesium',color:'#4a7fa0',unit:'mg',dv:420,sources:[
+    {icon:'🥜',name:'Cashews',q:'cashews',val:'292mg/100g'},
+    {icon:'🥜',name:'Almonds',q:'almonds',val:'270mg/100g'},
+    {icon:'🌾',name:'Oats',q:'oats',val:'177mg/100g'},
+    {icon:'🥬',name:'Spinach',q:'spinach',val:'79mg/100g'},
+    {icon:'🫘',name:'Soya Chunks',q:'soya chunks',val:'40mg/100g'},
+    {icon:'🍌',name:'Banana',q:'banana',val:'27mg/100g'},
+    {icon:'🫘',name:'Edamame',q:'edamame',val:'64mg/100g'},
+    {icon:'🍛',name:'Chana Dal',q:'chana dal',val:'48mg/100g'},
+    {icon:'🥜',name:'Peanut Butter',q:'peanut butter',val:'168mg/100g'},
+    {icon:'🍫',name:'Dark Chocolate',q:'dark chocolate',val:'228mg/100g'},
+  ]},
+  sf:{label:'Sat. Fat',color:'#b85c44',unit:'g',dv:20,sources:[
+    {icon:'💡',name:'Already high',q:'',val:'Reduce ghee, butter & full-fat dairy today'},
+    {icon:'✅',name:'Better fats',q:'avocado',val:'Try avocado, nuts & olive oil instead'},
+  ]},
+};
+
+function rFoodSuggestions(micros){
+  const card=document.getElementById('foodSugCard');
+  const list=document.getElementById('foodSugList');
+  list.innerHTML='';
+
+  // if no food logged at all today, hide card
+  const totalLogged=Object.values(micros).reduce((a,b)=>a+(b||0),0);
+  if(totalLogged===0){card.style.display='none';return;}
+
+  // find deficient micros (below 60% DV), skip na/sug/sf from suggestions
+  const skipKeys=new Set(['na','sug','sf']);
+  const deficient=MICROS
+    .filter(mi=>!skipKeys.has(mi.k))
+    .map(mi=>({...mi,v:micros[mi.k]||0,pct:(micros[mi.k]||0)/mi.dv*100}))
+    .filter(mi=>mi.pct<60)
+    .sort((a,b)=>a.pct-b.pct)
+    .slice(0,6);
+
+  card.style.display='block';
+
+  if(!deficient.length){
+    list.innerHTML='<div style="font-size:13px;color:var(--green);padding:8px 0">🌟 Great job! All key micronutrients are above 60% DV today. Keep it up!</div>';
+    return;
+  }
+
+  deficient.forEach(mi=>{
+    const mf=MICRO_FOODS[mi.k];
+    if(!mf)return;
+    const row=document.createElement('div');row.className='fsug-row';
+    const pct=Math.round(mi.pct);
+    const urgency=pct<20?'🔴':pct<40?'🟠':'🟡';
+    row.innerHTML=`<div class="fsug-micro">
+      <div class="fsug-dot" style="background:${mf.color}"></div>
+      <span class="fsug-label">${urgency} Low ${mf.label}</span>
+      <span class="fsug-pct">${pct}% DV · ${mi.v<1?mi.v.toFixed(2):Math.round(mi.v)}${mf.unit}</span>
+    </div>
+    <div class="fsug-chips" id="chips_${mi.k}"></div>`;
+    list.appendChild(row);
+
+    const chipsEl=row.querySelector('.fsug-chips');
+    mf.sources.forEach(src=>{
+      const chip=document.createElement('div');chip.className='fsug-chip';
+      chip.innerHTML=`<span class="fsug-chip-icon">${src.icon}</span><div><div class="fsug-chip-name">${src.name}</div><div class="fsug-chip-val">${src.val}</div></div>`;
+      if(src.q){
+        chip.onclick=()=>{
+          gn('food',1);
+          const sb=document.getElementById('sb');
+          sb.value=src.q;
+          sb.dispatchEvent(new Event('input'));
+        };
+      } else {
+        chip.style.cursor='default';
+        chip.style.opacity='0.75';
+      }
+      chipsEl.appendChild(chip);
+    });
+  });
 }
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2200);}
