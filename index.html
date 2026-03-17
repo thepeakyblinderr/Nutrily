@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#ede8e0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Nutrily</title>
@@ -657,7 +657,22 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
         <div class="prof-field"><div class="prof-label">Fat (g)</div><input class="prof-input" id="pFat" type="number" placeholder="65"></div>
       </div>
       <button class="prof-save" onclick="saveProf()">Save Profile</button>
-    </div>
+
+```
+  <div class="prof-sec">Data & Backup</div>
+  <div style="display:flex;flex-direction:column;gap:9px">
+    <button onclick="exportBackup()" style="width:100%;padding:13px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:500;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s">
+      <span style="font-size:16px">⬇️</span> Export Backup (JSON)
+    </button>
+    <label style="width:100%;padding:13px;background:var(--bg);border:1.5px dashed var(--bdr);border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:500;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s">
+      <span style="font-size:16px">⬆️</span> Import Backup (JSON)
+      <input type="file" accept=".json" onchange="importBackup(event)" style="display:none">
+    </label>
+    <div style="font-size:11px;color:var(--faint);text-align:center;line-height:1.5">Backup includes all food logs, goals, exercise plans &amp; water data</div>
+  </div>
+</div>
+```
+
   </div>
 </div>
 
@@ -1332,6 +1347,74 @@ async function saveProf(){
   await kP('profile',profile);await kP('goals',goals);
   document.getElementById('profOv').classList.remove('open');
   await rH();toast('Profile saved!');
+}
+
+async function exportBackup(){
+  try{
+    // collect all logs
+    const logs=await lA();
+    // collect all kv keys
+    const kvAll=await new Promise(r=>{try{tx('kv').getAll().onsuccess=e=>r(e.target.result);}catch{r([]);}});
+    const backup={
+      version:1,
+      exportedAt:new Date().toISOString(),
+      appName:'Nutrily',
+      logs,
+      kv:kvAll,
+    };
+    const json=JSON.stringify(backup,null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const date=new Date().toISOString().split('T')[0];
+    a.href=url;a.download=`nutrily-backup-${date}.json`;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+    toast('Backup downloaded!');
+  }catch(e){toast('Export failed');}
+}
+
+async function importBackup(event){
+  const file=event.target.files[0];
+  if(!file){return;}
+  try{
+    const text=await file.text();
+    const backup=JSON.parse(text);
+    if(!backup.logs||!backup.kv){toast('Invalid backup file');return;}
+    // confirm
+    const count=backup.logs.length;
+    if(!confirm(`Import backup?\n\nThis will add ${count} food log entries and restore all settings.\n\nYour existing data will NOT be deleted — entries will be merged.`)){
+      event.target.value='';return;
+    }
+    // restore kv entries
+    for(const item of backup.kv){
+      await kP(item.k,item.v);
+    }
+    // restore logs (skip duplicates by timestamp)
+    const existingLogs=await lA();
+    const existingTs=new Set(existingLogs.map(l=>l.ts));
+    let added=0;
+    for(const log of backup.logs){
+      const {id:_,...logWithoutId}=log; // strip old id so autoIncrement assigns a new one
+      if(!existingTs.has(log.ts)){
+        await lAd(logWithoutId);added++;
+      }
+    }
+    // reload state from kv
+    const g=await kG('goals');if(g)goals=g;
+    const pr=await kG('profile');if(pr)profile=pr;
+    const ew=await kG('exWeek');if(ew)exWeek=ew;
+    const w=await kG('water_'+TODAY);water=w||0;
+    const s=await kG('steps_'+TODAY);steps=s||0;
+    rGl();rStUI();await rH();
+    document.getElementById('profOv').classList.remove('open');
+    event.target.value='';
+    toast(`Restored! ${added} new entries added`);
+  }catch(e){
+    console.error(e);
+    toast('Import failed — invalid file');
+    event.target.value='';
+  }
 }
 
 /* PROGRESS */
