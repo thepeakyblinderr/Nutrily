@@ -420,10 +420,15 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   <div class="qa-wrap" style="margin:0 14px 12px">
     <div class="qa-field">
       <input id="qa-inp" type="text" placeholder="Try: &quot;ate 2 rotis and dal for lunch&quot;" autocomplete="off" onkeydown="if(event.key==='Enter')submitQuickAddFood()">
+      <span id="qa-badge" style="display:none;font-size:10px;color:var(--muted);flex-shrink:0;margin-left:6px">thinking…</span>
     </div>
     <button class="qa-send" id="qa-btn" onclick="submitQuickAddFood()" title="Log it">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
     </button>
+  </div>
+  <div id="qa-err" style="display:none;margin:0 14px 12px;padding:9px 12px;border-radius:var(--rs);background:var(--card);border:1.5px solid var(--red);font-size:12px;color:var(--red);font-weight:600;align-items:center;justify-content:space-between;gap:10px">
+    <span id="qa-err-text"></span>
+    <button type="button" onclick="dismissAiErr()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;line-height:1;flex-shrink:0">✕</button>
   </div>
   <div class="sw">
     <input class="si2" id="sb" type="text" placeholder="Search: tea, chai, roti, biryani, dal…" oninput="dS()">
@@ -819,9 +824,13 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
       </div>
       <div class="prof-sec">AI Quick-Add</div>
       <div class="prof-field">
-        <div class="prof-label">Gemini API Key</div>
-        <input class="prof-input" id="pGKey" type="password" placeholder="Paste your Gemini API key" autocomplete="off">
-        <div style="font-size:11px;color:var(--faint);margin-top:5px;line-height:1.5">Powers the quick-add box on the Food page — type "ate 2 rotis and dal" and it logs itself. Get a free key at Google AI Studio. Stored only on this device, sent directly to Google when you use quick-add.</div>
+        <div class="prof-label">AICredits API Key</div>
+        <div style="position:relative">
+          <input class="prof-input" id="pGKey" type="password" placeholder="AICredits API key..." autocomplete="off" style="padding-right:38px">
+          <button type="button" id="cfg-aikey-eye" onclick="toggleAiKeyVisibility()" title="Show/hide key" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:15px">👁</button>
+        </div>
+        <div style="font-size:11px;color:var(--faint);margin-top:5px;line-height:1.5">🔒 PAY IN INR VIA UPI AT aicredits.in · KEY STAYS ON YOUR DEVICE · LEAVE BLANK FOR MANUAL ENTRY</div>
+        <div id="cfg-ai-err" style="display:none;font-size:11px;color:var(--red);font-weight:700;margin-top:4px"></div>
       </div>
       <button class="prof-save" onclick="saveProf()">Save Profile</button>
 
@@ -862,8 +871,8 @@ const TODAY=new Date().toISOString().split('T')[0];
 let goals={kcal:2000,protein:150,carbs:250,fat:65};
 let water=0,steps=0,curMeal='breakfast',selF=null,sT=null,chC=null,chM=null,per=7;
 let profile={name:'',age:'',weight:'',height:''};
-let geminiKey='';
-let _gModel=null,_gBadModels=[],_gModelKey=null;
+let aiApiKey='';
+let aiInFlight=false;
 let exWeek={};
 let exSelDay=TODAY;
 let sleepData={};   // { 'YYYY-MM-DD': {hrs:7, qual:1} }
@@ -989,7 +998,7 @@ async function init(){
   const w=await kG('water_'+TODAY);water=w||0;
   const s=await kG('steps_'+TODAY);steps=s||0;
   const pr=await kG('profile');if(pr)profile=pr;
-  const gk=await kG('geminiKey');if(gk)geminiKey=gk;
+  const gk=await kG('aiApiKey');if(gk)aiApiKey=gk;
   const ew=await kG('exWeek');if(ew)exWeek=ew;
   const sd=await kG('sleepData');if(sd)sleepData=sd;
   const md=await kG('moodData');if(md)moodData=md;
@@ -1302,88 +1311,112 @@ async function cA(){
   await rH();toast('Added to '+curMeal);
 }
 
-/* AI QUICK ADD (Gemini) */
+/* AI QUICK ADD (AICredits / Claude) */
 const QA_ICON_ARROW='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
 const QA_ICON_SPIN='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-9-9" opacity=".9"/></svg>';
 
-function _gCacheValid(){
-  if(_gModelKey!==geminiKey){_gModel=null;_gBadModels=[];_gModelKey=geminiKey;}
-  return _gModel;
+function toggleAiKeyVisibility(){
+  const inp=document.getElementById('pGKey');
+  const eye=document.getElementById('cfg-aikey-eye');
+  if(!inp)return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  if(eye)eye.textContent=show?'🙈':'👁';
+}
+function showAiErr(msg){
+  const el=document.getElementById('qa-err');
+  const txt=document.getElementById('qa-err-text');
+  if(el&&txt){txt.textContent=msg;el.style.display='flex';}
+  const cfgErr=document.getElementById('cfg-ai-err');
+  if(cfgErr){cfgErr.textContent=msg;cfgErr.style.display='';}
+}
+function dismissAiErr(){
+  const el=document.getElementById('qa-err');if(el)el.style.display='none';
+}
+function hideAiErr(){
+  dismissAiErr();
+  const cfgErr=document.getElementById('cfg-ai-err');if(cfgErr)cfgErr.style.display='none';
+}
+function setAiBadge(on){
+  const b=document.getElementById('qa-badge');if(b)b.style.display=on?'':'none';
+}
+async function _clearAiKey(){
+  aiApiKey='';
+  const inp=document.getElementById('pGKey');if(inp)inp.value='';
+  await kP('aiApiKey','');
 }
 
-async function resolveGeminiModel(excludeCurrent){
-  if(excludeCurrent&&_gModel){_gBadModels=Array.from(new Set([...(_gBadModels||[]),_gModel]));_gModel=null;}
-  if(_gCacheValid())return _gModel;
+const AI_SYSTEM_PROMPT_FOOD=
+  'You are a nutrition-logging assistant for a food tracking app. Today\'s date is '+TODAY+' (YYYY-MM-DD).\n'+
+  'The user types one line describing food they ate. Return ONLY valid JSON, no prose, no markdown fences:\n'+
+  '{"name":"<short label>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"qty":<number>,"unit":"<piece|bowl|g|serving|etc>","meal":"breakfast|lunch|snacks|dinner","date":"YYYY-MM-DD"}\n'+
+  'Rules:\n'+
+  '- Use your own nutrition knowledge to estimate realistic TOTAL kcal, protein, carbs and fat for the specific food and quantity described (not per 100g — the total for what was eaten)\n'+
+  '- Resolve any relative date words ("today", "yesterday", a weekday, etc.) against today\'s date; if no date is mentioned, use today\n'+
+  '- If no meal is mentioned, default to whichever meal is passed as context\n'+
+  '- If the line is ambiguous or no food is described, return {"error":"<short reason>"}\n'+
+  '- Never include any text outside the JSON object';
 
-  const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(geminiKey));
-  if(!res.ok){const body=await res.text().catch(()=>'');throw new Error('Could not list Gemini models ('+res.status+'): '+body.slice(0,200));}
-  const data=await res.json();
-  const bad=new Set(_gBadModels||[]);
-  const usable=(data.models||[])
-    .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'))
-    .map(m=>m.name.replace(/^models\//,''))
-    .filter(name=>!bad.has(name));
-  if(!usable.length)throw new Error('No usable Gemini models left to try for this API key');
+// Gated fetch to the AICredits proxy: no key -> null (caller falls back to
+// manual entry), one call in flight at a time, always resolves rather than
+// throwing so the caller doesn't need a separate catch for AI-specific
+// failures — a null return with a banner already shown covers all of them.
+async function parseFood(text){
+  if(!aiApiKey)return null;
+  if(aiInFlight)return null;
+  aiInFlight=true;
+  setAiBadge(true);
+  try{
+    const res=await fetch('https://api.aicredits.in/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+aiApiKey,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'anthropic/claude-sonnet-4-20250514',
+        max_tokens:150,
+        messages:[
+          {role:'system',content:AI_SYSTEM_PROMPT_FOOD},
+          {role:'user',content:'The meal tab currently open is "'+curMeal+'". Parse: "'+text.replace(/"/g,'\\"')+'"'}
+        ]
+      })
+    });
 
-  const isSpecialty=n=>/tts|audio|image|imagen|embed|vision|aqa|veo|live|computer-use|banana|robotics|learnlm/i.test(n);
-  const pick=
-    usable.find(n=>/^gemini-[\d.]+-flash(-\d+)?$/.test(n))||
-    usable.find(n=>/flash/i.test(n)&&!isSpecialty(n)&&!/lite|8b/i.test(n))||
-    usable.find(n=>/flash/i.test(n)&&!isSpecialty(n))||
-    usable.find(n=>!isSpecialty(n))||
-    usable[0];
+    if(!res.ok){
+      const bodyText=await res.text().catch(()=>'');
+      let apiMsg=bodyText;
+      try{apiMsg=JSON.parse(bodyText)?.error?.message||bodyText;}catch(_){}
+      const lower=(apiMsg||'').toLowerCase();
+      if(res.status===401||/\bauth\b|\bkey\b/.test(lower)){
+        showAiErr('BAD KEY');
+        await _clearAiKey();
+      }else if(res.status===402||/credit|balance/.test(lower)){
+        showAiErr('NO CREDITS');
+        await _clearAiKey();
+      }else if(res.status===429){
+        showAiErr('RATE LIMITED — TRY AGAIN');
+      }else{
+        showAiErr('AI ERR '+res.status+': '+(apiMsg||'').slice(0,80));
+      }
+      return null;
+    }
 
-  _gModel=pick;_gModelKey=geminiKey;
-  return pick;
-}
+    const data=await res.json();
+    const raw=data?.choices?.[0]?.message?.content;
+    if(!raw){showAiErr('AI ERR: empty response');return null;}
 
-async function callGemini(model,prompt,schema){
-  return fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(geminiKey),{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json',responseSchema:schema}})
-  });
-}
+    let parsed;
+    try{parsed=JSON.parse(raw);}
+    catch(parseErr){showAiErr(raw.slice(0,120));return null;}
 
-async function geminiParseFood(text){
-  const schema={
-    type:'OBJECT',
-    properties:{
-      name:{type:'STRING',description:'Short label for the food/meal, e.g. "Roti & Dal".'},
-      kcal:{type:'NUMBER',description:'Estimated total calories for the described quantity.'},
-      protein:{type:'NUMBER',description:'Estimated total protein in grams.'},
-      carbs:{type:'NUMBER',description:'Estimated total carbohydrates in grams.'},
-      fat:{type:'NUMBER',description:'Estimated total fat in grams.'},
-      qty:{type:'NUMBER',description:'Quantity as a number, e.g. 2.'},
-      unit:{type:'STRING',description:'Unit for the quantity, e.g. "piece", "bowl", "g", "serving".'},
-      meal:{type:'STRING',enum:['breakfast','lunch','snacks','dinner']},
-      date:{type:'STRING',description:'Resolved date in YYYY-MM-DD format.'}
-    },
-    required:['name','kcal','protein','carbs','fat','qty','unit','meal','date']
-  };
-  const prompt=
-    'You are a nutrition-logging assistant for a food tracking app. '+
-    'Today\'s date is '+TODAY+' (YYYY-MM-DD). The meal tab currently open is "'+curMeal+'". '+
-    'Parse the following into a single food log entry: "'+text.replace(/"/g,'\\"')+'"\n'+
-    'Use your own nutrition knowledge to estimate realistic total kcal, protein, carbs and fat for the '+
-    'specific food and quantity described (not per 100g — the total for what was eaten). '+
-    'Resolve any relative date words ("today", "yesterday", a weekday, etc.) against today\'s date; if no date is mentioned, use today. '+
-    'If no meal is mentioned, default to "'+curMeal+'". Return only the JSON object.';
-
-  let model=await resolveGeminiModel(false);
-  let res=await callGemini(model,prompt,schema);
-
-  for(let tries=0;(res.status===404||res.status===400)&&tries<3;tries++){
-    model=await resolveGeminiModel(true);
-    res=await callGemini(model,prompt,schema);
+    if(parsed.error){showAiErr(String(parsed.error).slice(0,120));return null;}
+    if(!parsed.kcal||+parsed.kcal<=0){showAiErr('Could not find nutrition info in that');return null;}
+    return parsed;
+  }catch(err){
+    showAiErr('AI ERR: '+String(err?.message||err).slice(0,80));
+    return null;
+  }finally{
+    aiInFlight=false;
+    setAiBadge(false);
   }
-  if(!res.ok){const body=await res.text().catch(()=>'');throw new Error('Gemini request failed ('+res.status+'): '+body.slice(0,200));}
-  const data=await res.json();
-  const raw=data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if(!raw)throw new Error('Empty response from Gemini');
-  const obj=JSON.parse(raw);
-  if(!obj.kcal||+obj.kcal<=0)throw new Error('No valid nutrition parsed');
-  return obj;
 }
 
 function _qaInsertPending(id,text){
@@ -1396,6 +1429,18 @@ function _qaInsertPending(id,text){
 }
 function _qaRemovePending(id){document.getElementById(id)?.remove();}
 
+// Falls through to the manual search box, prefilled with what was typed,
+// instead of blocking the user — used both when no key is set and when the
+// AI call fails to produce a usable parse.
+function _qaFallbackToSearch(text){
+  const sb=document.getElementById('sb');
+  if(sb){
+    sb.value=text;
+    sb.focus();
+    dS();
+  }
+}
+
 async function submitQuickAddFood(){
   const inp=document.getElementById('qa-inp');
   const btn=document.getElementById('qa-btn');
@@ -1403,8 +1448,13 @@ async function submitQuickAddFood(){
   const text=inp.value.trim();
   if(!text)return;
 
-  if(!geminiKey){toast('Add a Gemini API key in Settings first');openProf();return;}
+  if(!aiApiKey){
+    inp.value='';
+    _qaFallbackToSearch(text);
+    return;
+  }
 
+  hideAiErr();
   inp.value='';
   inp.disabled=true;btn.disabled=true;
   btn.classList.add('busy');btn.innerHTML=QA_ICON_SPIN;
@@ -1413,23 +1463,29 @@ async function submitQuickAddFood(){
   _qaInsertPending(tempId,text);
 
   try{
-    const parsed=await geminiParseFood(text);
+    const parsed=await parseFood(text);
     _qaRemovePending(tempId);
-    const meal=['breakfast','lunch','snacks','dinner'].includes(parsed.meal)?parsed.meal:curMeal;
-    const date=/^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'')?parsed.date:TODAY;
-    await lAd({
-      date,meal,
-      name:(parsed.name||text).trim().slice(0,60)||text.slice(0,60),
-      qty:+parsed.qty||1,unit:parsed.unit||'serving',
-      kcal:+parsed.kcal||0,protein:+parsed.protein||0,carbs:+parsed.carbs||0,fat:+parsed.fat||0,
-      micros:{},ts:Date.now()
-    });
-    await rH();
-    toast('Added '+(parsed.name||text)+' to '+meal);
+    if(!parsed){
+      // parseFood already surfaced a reason in the qa-err banner
+      _qaFallbackToSearch(text);
+    }else{
+      const meal=['breakfast','lunch','snacks','dinner'].includes(parsed.meal)?parsed.meal:curMeal;
+      const date=/^\d{4}-\d{2}-\d{2}$/.test(parsed.date||'')?parsed.date:TODAY;
+      await lAd({
+        date,meal,
+        name:(parsed.name||text).trim().slice(0,60)||text.slice(0,60),
+        qty:+parsed.qty||1,unit:parsed.unit||'serving',
+        kcal:+parsed.kcal||0,protein:+parsed.protein||0,carbs:+parsed.carbs||0,fat:+parsed.fat||0,
+        micros:{},ts:Date.now()
+      });
+      await rH();
+      toast('Added '+(parsed.name||text)+' to '+meal);
+    }
   }catch(err){
     console.error('Quick-add food parse failed:',err);
     _qaRemovePending(tempId);
-    toast('Could not parse that — try rephrasing');
+    showAiErr('Could not parse that — try rephrasing, or add it manually');
+    _qaFallbackToSearch(text);
   }finally{
     inp.disabled=false;btn.disabled=false;
     btn.classList.remove('busy');btn.innerHTML=QA_ICON_ARROW;
@@ -1896,7 +1952,8 @@ function openProf(){
   document.getElementById('pProt').value=goals.protein;
   document.getElementById('pCarb').value=goals.carbs;
   document.getElementById('pFat').value=goals.fat;
-  document.getElementById('pGKey').value=geminiKey||'';
+  document.getElementById('pGKey').value=aiApiKey||'';
+  hideAiErr();
   document.getElementById('profNameDisp').textContent=profile.name||'Your Profile';
   document.getElementById('profSubDisp').textContent=profile.weight?profile.weight+'kg · '+profile.height+'cm':'Set your goals below';
   document.getElementById('profOv').classList.add('open');
@@ -1904,8 +1961,8 @@ function openProf(){
 async function saveProf(){
   profile={name:document.getElementById('pName').value.trim(),age:document.getElementById('pAge').value,weight:document.getElementById('pWt').value,height:document.getElementById('pHt').value};
   goals={kcal:parseInt(document.getElementById('pKcal').value)||2000,protein:parseInt(document.getElementById('pProt').value)||150,carbs:parseInt(document.getElementById('pCarb').value)||250,fat:parseInt(document.getElementById('pFat').value)||65};
-  geminiKey=document.getElementById('pGKey').value.trim();
-  await kP('profile',profile);await kP('goals',goals);await kP('geminiKey',geminiKey);
+  aiApiKey=document.getElementById('pGKey').value.trim();
+  await kP('profile',profile);await kP('goals',goals);await kP('aiApiKey',aiApiKey);
   document.getElementById('profOv').classList.remove('open');
   await rH();toast('Profile saved!');
 }
