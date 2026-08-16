@@ -1349,9 +1349,13 @@ async function _clearAiKey(){
 const AI_SYSTEM_PROMPT_FOOD=
   'You are a nutrition-logging assistant for a food tracking app. Today\'s date is '+TODAY+' (YYYY-MM-DD).\n'+
   'The user types one line describing food they ate. Return ONLY valid JSON, no prose, no markdown fences:\n'+
-  '{"name":"<short label>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"qty":<number>,"unit":"<piece|bowl|g|serving|etc>","meal":"breakfast|lunch|snacks|dinner","date":"YYYY-MM-DD"}\n'+
+  '{"name":"<short label>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"qty":<number>,"unit":"<piece|bowl|g|serving|etc>","meal":"breakfast|lunch|snacks|dinner","date":"YYYY-MM-DD",'+
+  '"fib":<number>,"sug":<number>,"ca":<number>,"fe":<number>,"pot":<number>,"na":<number>,"vc":<number>,"vd":<number>,"b12":<number>,"mg":<number>,"sf":<number>}\n'+
   'Rules:\n'+
-  '- Use your own nutrition knowledge to estimate realistic TOTAL kcal, protein, carbs and fat for the specific food and quantity described (not per 100g — the total for what was eaten)\n'+
+  '- Use your own nutrition knowledge to estimate realistic TOTAL values for the specific food and quantity described (not per 100g — the total for what was eaten)\n'+
+  '- kcal/protein/carbs/fat/fib(fiber)/sug(sugar)/sf(saturated fat) are in grams (kcal excepted, that\'s kcal)\n'+
+  '- ca(calcium)/fe(iron)/pot(potassium)/na(sodium)/mg(magnesium) are in milligrams; vc(vitamin C) is in milligrams; vd(vitamin D) and b12(vitamin B12) are in micrograms\n'+
+  '- If a micronutrient is genuinely negligible for that food, use 0 — do not omit any key\n'+
   '- Resolve any relative date words ("today", "yesterday", a weekday, etc.) against today\'s date; if no date is mentioned, use today\n'+
   '- If no meal is mentioned, default to whichever meal is passed as context\n'+
   '- If the line is ambiguous or no food is described, return {"error":"<short reason>"}\n'+
@@ -1476,7 +1480,8 @@ async function submitQuickAddFood(){
         name:(parsed.name||text).trim().slice(0,60)||text.slice(0,60),
         qty:+parsed.qty||1,unit:parsed.unit||'serving',
         kcal:+parsed.kcal||0,protein:+parsed.protein||0,carbs:+parsed.carbs||0,fat:+parsed.fat||0,
-        micros:{},ts:Date.now()
+        micros:{fib:+parsed.fib||0,sug:+parsed.sug||0,ca:+parsed.ca||0,fe:+parsed.fe||0,pot:+parsed.pot||0,na:+parsed.na||0,vc:+parsed.vc||0,vd:+parsed.vd||0,b12:+parsed.b12||0,mg:+parsed.mg||0,sf:+parsed.sf||0},
+        ts:Date.now()
       });
       await rH();
       toast('Added '+(parsed.name||text)+' to '+meal);
