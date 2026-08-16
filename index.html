@@ -96,7 +96,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .tabs{display:flex;gap:7px;padding:0 14px 14px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
 .tab{padding:6px 15px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;white-space:nowrap;transition:all .15s}
-.tab.active{border-color:var(--text);background:var(--text);color:#fff}
+.tab.active{border-color:var(--text);background:var(--text);color:var(--bg)}
 .res{padding:0 14px;max-height:calc(100dvh - 240px);overflow-y:auto}
 .rl{font-size:10.5px;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;padding:8px 0 5px}
 .rr{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:opacity .15s}
@@ -135,7 +135,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .npr:last-child{border-bottom:none}
 .npk{font-size:12.5px;color:var(--muted)}
 .npv{font-size:12.5px;font-weight:500}
-.ab{width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:14px;font-weight:500;cursor:pointer;letter-spacing:.02em;transition:opacity .15s}
+.ab{width:100%;padding:14px;background:var(--text);color:var(--bg);border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:14px;font-weight:500;cursor:pointer;letter-spacing:.02em;transition:opacity .15s}
 .ab:hover{opacity:.85}
 .wn{font-family:'Syne',sans-serif;font-size:58px;font-weight:600;line-height:1}
 .wu{font-size:15px;color:var(--muted)}
@@ -146,7 +146,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .wb{display:flex;gap:10px}
 .wbt{flex:1;padding:13px;border:1.5px solid var(--bdr);background:var(--card);border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:13.5px;font-weight:500;color:var(--text);cursor:pointer;transition:background .15s}
 .wbt:hover{background:var(--bg)}
-.wbt.p{background:var(--text);color:#fff;border-color:var(--text)}
+.wbt.p{background:var(--text);color:var(--bg);border-color:var(--text)}
 .wbt.p:hover{opacity:.85}
 .stpn{font-family:'Syne',sans-serif;font-size:58px;font-weight:600;line-height:1}
 .pt{height:7px;background:var(--bdr);border-radius:7px;overflow:hidden;margin:16px 0 6px}
@@ -183,7 +183,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .ex-inp{flex:1;min-width:110px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:13px;color:var(--text);outline:none;transition:border-color .2s}
 .ex-inp:focus{border-color:var(--amber)}
 .ex-inp::placeholder{color:var(--faint)}
-.ex-add-btn{padding:10px 16px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.ex-add-btn{padding:10px 16px;background:var(--text);color:var(--bg);border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:opacity .15s}
 .ex-add-btn:hover{opacity:.85}
 .rest-toggle{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--bg);border-radius:var(--rs);margin-bottom:14px;cursor:pointer}
 .rest-toggle-label{font-size:13px;font-weight:500;flex:1}
@@ -205,7 +205,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .prof-input{width:100%;padding:11px 14px;background:var(--bg);border:1.5px solid var(--bdr);border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:14px;color:var(--text);outline:none;transition:border-color .2s}
 .prof-input:focus{border-color:var(--amber)}
 .prof-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.prof-save{width:100%;padding:14px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:14px;font-weight:500;cursor:pointer;margin-top:18px;transition:opacity .15s}
+.prof-save{width:100%;padding:14px;background:var(--text);color:var(--bg);border:none;border-radius:var(--rs);font-family:'DM Mono',monospace;font-size:14px;font-weight:500;cursor:pointer;margin-top:18px;transition:opacity .15s}
 .prof-save:hover{opacity:.85}
 .prof-avatar{width:64px;height:64px;border-radius:50%;background:var(--bg);border:2px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px}
 .prof-name-disp{font-family:'Syne',sans-serif;font-size:18px;font-weight:600;text-align:center;margin-bottom:2px}
@@ -218,7 +218,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .cb{height:155px;position:relative}
 .pr{display:flex;gap:6px;margin-bottom:14px}
 .pb{padding:5px 14px;border-radius:20px;border:1.5px solid var(--bdr);background:transparent;font-family:'DM Mono',monospace;font-size:11.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s}
-.pb.active{border-color:var(--text);background:var(--text);color:#fff}
+.pb.active{border-color:var(--text);background:var(--text);color:var(--bg)}
 .mir{padding:11px 0;border-bottom:1px solid var(--bdr)}
 .mir:last-child{border-bottom:none}
 .mit{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
@@ -336,7 +336,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .wbq-scale{display:flex;gap:5px}
 .wbq-dot{width:28px;height:28px;border-radius:50%;background:var(--bdr);border:none;cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .15s;display:flex;align-items:center;justify-content:center}
 .wbq-dot.on{background:var(--purple);color:#fff}
-.toast{position:fixed;bottom:calc(var(--nh) + var(--sb) + 12px);left:50%;transform:translateX(-50%) translateY(6px);background:var(--text);color:#fff;padding:9px 18px;border-radius:20px;font-size:12.5px;z-index:500;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .22s}
+.toast{position:fixed;bottom:calc(var(--nh) + var(--sb) + 12px);left:50%;transform:translateX(-50%) translateY(6px);background:var(--text);color:var(--bg);padding:9px 18px;border-radius:20px;font-size:12.5px;z-index:500;opacity:0;pointer-events:none;white-space:nowrap;transition:opacity .22s,transform .22s}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -471,7 +471,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     <div><div class="gr">Train smart</div><div class="ti">Exercise</div></div>
     <!-- plan / log toggle -->
     <div style="display:flex;background:var(--bg);border-radius:20px;padding:3px;gap:2px;border:1.5px solid var(--bdr)">
-      <button id="modeBtn0" onclick="setExMode('plan')" style="padding:5px 13px;border-radius:16px;border:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;background:var(--text);color:#fff;transition:all .15s">Plan</button>
+      <button id="modeBtn0" onclick="setExMode('plan')" style="padding:5px 13px;border-radius:16px;border:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;background:var(--text);color:var(--bg);transition:all .15s">Plan</button>
       <button id="modeBtn1" onclick="setExMode('log')"  style="padding:5px 13px;border-radius:16px;border:none;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s">Log</button>
     </div>
   </div>
@@ -1349,9 +1349,13 @@ async function _clearAiKey(){
 const AI_SYSTEM_PROMPT_FOOD=
   'You are a nutrition-logging assistant for a food tracking app. Today\'s date is '+TODAY+' (YYYY-MM-DD).\n'+
   'The user types one line describing food they ate. Return ONLY valid JSON, no prose, no markdown fences:\n'+
-  '{"name":"<short label>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"qty":<number>,"unit":"<piece|bowl|g|serving|etc>","meal":"breakfast|lunch|snacks|dinner","date":"YYYY-MM-DD"}\n'+
+  '{"name":"<short label>","kcal":<number>,"protein":<number>,"carbs":<number>,"fat":<number>,"qty":<number>,"unit":"<piece|bowl|g|serving|etc>","meal":"breakfast|lunch|snacks|dinner","date":"YYYY-MM-DD",'+
+  '"fib":<number>,"sug":<number>,"ca":<number>,"fe":<number>,"pot":<number>,"na":<number>,"vc":<number>,"vd":<number>,"b12":<number>,"mg":<number>,"sf":<number>}\n'+
   'Rules:\n'+
-  '- Use your own nutrition knowledge to estimate realistic TOTAL kcal, protein, carbs and fat for the specific food and quantity described (not per 100g — the total for what was eaten)\n'+
+  '- Use your own nutrition knowledge to estimate realistic TOTAL values for the specific food and quantity described (not per 100g — the total for what was eaten)\n'+
+  '- kcal/protein/carbs/fat/fib(fiber)/sug(sugar)/sf(saturated fat) are in grams (kcal excepted, that\'s kcal)\n'+
+  '- ca(calcium)/fe(iron)/pot(potassium)/na(sodium)/mg(magnesium) are in milligrams; vc(vitamin C) is in milligrams; vd(vitamin D) and b12(vitamin B12) are in micrograms\n'+
+  '- If a micronutrient is genuinely negligible for that food, use 0 — do not omit any key\n'+
   '- Resolve any relative date words ("today", "yesterday", a weekday, etc.) against today\'s date; if no date is mentioned, use today\n'+
   '- If no meal is mentioned, default to whichever meal is passed as context\n'+
   '- If the line is ambiguous or no food is described, return {"error":"<short reason>"}\n'+
@@ -1476,7 +1480,8 @@ async function submitQuickAddFood(){
         name:(parsed.name||text).trim().slice(0,60)||text.slice(0,60),
         qty:+parsed.qty||1,unit:parsed.unit||'serving',
         kcal:+parsed.kcal||0,protein:+parsed.protein||0,carbs:+parsed.carbs||0,fat:+parsed.fat||0,
-        micros:{},ts:Date.now()
+        micros:{fib:+parsed.fib||0,sug:+parsed.sug||0,ca:+parsed.ca||0,fe:+parsed.fe||0,pot:+parsed.pot||0,na:+parsed.na||0,vc:+parsed.vc||0,vd:+parsed.vd||0,b12:+parsed.b12||0,mg:+parsed.mg||0,sf:+parsed.sf||0},
+        ts:Date.now()
       });
       await rH();
       toast('Added '+(parsed.name||text)+' to '+meal);
@@ -1521,8 +1526,8 @@ function setExMode(m){
   exMode=m;
   const pBtn=document.getElementById('modeBtn0'),lBtn=document.getElementById('modeBtn1');
   const base='padding:5px 13px;border-radius:16px;border:none;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;';
-  pBtn.style.cssText=base+(m==='plan'?'background:var(--text);color:#fff':'background:transparent;color:var(--muted)');
-  lBtn.style.cssText=base+(m==='log'?'background:var(--text);color:#fff':'background:transparent;color:var(--muted)');
+  pBtn.style.cssText=base+(m==='plan'?'background:var(--text);color:var(--bg)':'background:transparent;color:var(--muted)');
+  lBtn.style.cssText=base+(m==='log'?'background:var(--text);color:var(--bg)':'background:transparent;color:var(--muted)');
   renderExCard();
 }
 function getWeekDates(){
